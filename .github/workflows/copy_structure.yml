@@ -1,7 +1,7 @@
 name: Copy Folder Structure from idols-media-01
 
 on:
-  workflow_dispatch:  # Allows you to run it manually
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,26 +24,30 @@ jobs:
           repository: beltedblinds/idols-media-01
           path: idols-media-01
 
-      - name: Copy folder structure (exclude some)
+      - name: Copy folder structure (exclude certain paths)
         run: |
           python <<'PYCODE'
           import os
           from pathlib import Path
-          import shutil
 
           source_root = Path("idols-media-01")
           target_root = Path("idols-media-02")
 
-          excluded = {".github/workflows", "idol_gallery_links.txt"}
+          # Paths to exclude (relative to source_root)
+          excluded_prefixes = [".github/workflows", "idol_gallery_links.txt"]
 
           for root, dirs, files in os.walk(source_root):
               rel = Path(root).relative_to(source_root)
-              # Skip excluded paths
-              if any(str(rel).startswith(ex) for ex in excluded):
+
+              # Skip excluded folders
+              rel_str = str(rel)
+              if any(rel_str.startswith(ex) for ex in excluded_prefixes):
                   continue
+
               target_dir = target_root / rel
               os.makedirs(target_dir, exist_ok=True)
-              # Add .gitkeep if folder is empty
+
+              # Add .gitkeep if this dir would otherwise be empty
               if not any(os.scandir(target_dir)):
                   (target_dir / ".gitkeep").touch()
 
