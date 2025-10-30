@@ -89,7 +89,6 @@ jobs:
               raw_url = f"{base_raw}{relative_path}".replace(" ", "%20")
               thumb_url = f"{base_raw}thumbnails/{relative_path}".replace(" ", "%20")
 
-
               src_mtime = os.path.getmtime(input_path)
               # Recreate thumbnail if it doesn't exist or is outdated
               if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < src_mtime:
@@ -104,17 +103,17 @@ jobs:
               else:
                   skipped += 1
               
-
               # ✅ Output format with trailing comma and space
               output_lines.append(f"{idol_name}, {raw_url}, {thumb_url}, ")
 
           # Sort exactly like previous version
           output_lines.sort()
 
-          with open("idol_gallery_links.txt", "w", encoding="utf-8") as f:
+          # ✅ Only this line is changed:
+          with open("idol_gallery_links_02.txt", "w", encoding="utf-8") as f:
               f.write("\n".join(output_lines))
 
-          print(f"📄 Generated idol_gallery_links.txt")
+          print(f"📄 Generated idol_gallery_links_02.txt")
           print(f"Summary: Processed {total} images — {updated} updated, {skipped} reused")
           PYCODE
 
@@ -123,16 +122,13 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          # Add both the links file AND the thumbnails directory
-          git add idol_gallery_links.txt thumbnails || true
-          # Only commit if there are changes
+          git add idol_gallery_links_02.txt thumbnails || true
           if ! git diff --cached --quiet; then
-            git commit -m "Update idol gallery links & thumbnails [auto]"
+            git commit -m "Update idol_gallery_links_02.txt & thumbnails [auto]"
             git push
           else
             echo "No changes to commit"
           fi
-
 
       # 7️⃣ Save thumbnails cache
       - name: Save thumbnails cache
