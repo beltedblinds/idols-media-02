@@ -23,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: thumbnails
-          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.png', '**/*.webp') }}
+          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp', '**/*.gif') }}
           restore-keys: |
             thumbnails-
 
@@ -59,7 +59,7 @@ jobs:
               if any(skip in root for skip in [".github", ".git", "thumbnails"]):
                   continue
               for file in files:
-                  if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                  if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
                       existing_images.append(os.path.relpath(os.path.join(root, file), "."))
 
           # 2️⃣ Remove thumbnails for deleted images
@@ -135,6 +135,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: thumbnails
-          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.png', '**/*.webp') }}
+          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp', '**/*.gif') }}
           restore-keys: |
             thumbnails-
