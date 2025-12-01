@@ -41,7 +41,7 @@ jobs:
           pip install pillow opencv-python-headless
 
       # 5️⃣ Generate thumbnails and gallery links
-      - name: Generate idol_gallery_links_03.txt
+      - name: Generate idol_gallery_links_02.txt
         run: |
           python <<'PYCODE'
           import os
@@ -154,10 +154,10 @@ jobs:
 
           # Sort and write to single file
           output_lines.sort()
-          with open("idol_gallery_links_03.txt", "w", encoding="utf-8") as f:
+          with open("idol_gallery_links_02.txt", "w", encoding="utf-8") as f:
               f.write("\n".join(output_lines))
 
-          print(f"📄 Generated idol_gallery_links_03.txt with {total} items — {updated} updated, {skipped} skipped")
+          print(f"📄 Generated idol_gallery_links_02.txt with {total} items — {updated} updated, {skipped} skipped")
           PYCODE
 
       # 6️⃣ Commit and push
@@ -165,7 +165,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add idol_gallery_links_03.txt thumbnails || true
+          git add idol_gallery_links_02.txt thumbnails || true
           git commit -m "Auto-generate gallery + video thumbnails" || echo "No changes"
           git push
 
