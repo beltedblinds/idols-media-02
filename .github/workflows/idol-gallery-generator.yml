@@ -11,38 +11,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo (shallow)
+      # 1️⃣ Checkout repository (latest commit only)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 1  # only latest commit
+          fetch-depth: 1
+          persist-credentials: true
 
       # 2️⃣ Restore cached thumbnails
       - name: Restore cached thumbnails
         uses: actions/cache@v4
         with:
           path: thumbnails
-          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp', '**/*.gif') }}
+          key: thumbnails-${{ hashFiles('**/*.jpg','**/*.jpeg','**/*.png','**/*.webp','**/*.gif','**/*.mp4','**/*.avi','**/*.mov','**/*.mkv') }}
           restore-keys: |
             thumbnails-
 
-      # 3️⃣ Set up Python
+      # 3️⃣ Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.10"
 
       # 4️⃣ Install dependencies
       - name: Install dependencies
-        run: pip install Pillow
+        run: |
+          python -m pip install --upgrade pip
+          pip install pillow opencv-python-headless
 
-      # 5️⃣ Generate thumbnails and gallery links (safe)
-      - name: Generate thumbnails and gallery links
+      # 5️⃣ Generate thumbnails and gallery links
+      - name: Generate idol_gallery_links_03.txt
         run: |
           python <<'PYCODE'
           import os
           from PIL import Image
+          import cv2
 
           repo = os.environ["GITHUB_REPOSITORY"]
           branch = "main"
@@ -53,88 +57,123 @@ jobs:
 
           os.makedirs("thumbnails", exist_ok=True)
 
-          # 1️⃣ Collect all existing images
-          existing_images = []
+          # Function to make image thumbnail
+          def make_image_thumbnail(input_path, thumb_path, size=(300,300)):
+              try:
+                  os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+                  with Image.open(input_path) as im:
+                      im.thumbnail(size)
+                      im.save(thumb_path, "WEBP")
+                      return thumb_path
+              except Exception as e:
+                  print(f"⚠️ Failed to create thumbnail for {input_path}: {e}")
+                  return None
+
+          # Function to make video thumbnail (first frame)
+          def make_video_thumbnail(video_path, thumb_path, size=(300,300)):
+              try:
+                  os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+                  vidcap = cv2.VideoCapture(video_path)
+                  success, frame = vidcap.read()
+                  vidcap.release()
+                  if success:
+                      frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                      im = Image.fromarray(frame)
+                      im.thumbnail(size)
+                      # Always save as .webp
+                      if not thumb_path.lower().endswith(".webp"):
+                          thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
+                      im.save(thumb_path, "WEBP")
+                      return thumb_path
+                  else:
+                      print(f"⚠️ Could not read first frame of {video_path}")
+                      return None
+              except Exception as e:
+                  print(f"⚠️ Failed to create thumbnail for {video_path}: {e}")
+                  return None
+
+          # Collect all media files
+          media_files = []
           for root, dirs, files in os.walk("."):
               if any(skip in root for skip in [".github", ".git", "thumbnails"]):
                   continue
               for file in files:
-                  if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
-                      existing_images.append(os.path.relpath(os.path.join(root, file), "."))
+                  if file.lower().endswith((".jpg",".jpeg",".png",".webp",".gif",".mp4",".avi",".mov",".mkv")):
+                      media_files.append(os.path.relpath(os.path.join(root, file), "."))
 
-          # 2️⃣ Remove thumbnails for deleted images
-          for thumb_file in os.listdir("thumbnails"):
-              thumb_path = os.path.join("thumbnails", thumb_file)
-              original_path = thumb_file.replace("_", os.sep)
-              if original_path not in existing_images:
-                  try:
-                      os.remove(thumb_path)
-                      print(f"🗑 Removed old thumbnail: {thumb_path}")
-                  except Exception:
-                      pass
+          # Remove old thumbnails not in current media
+          if os.path.exists("thumbnails"):
+              for idol_folder in os.listdir("thumbnails"):
+                  idol_path = os.path.join("thumbnails", idol_folder)
+                  if not os.path.isdir(idol_path):
+                      continue
+                  for thumb_file in os.listdir(idol_path):
+                      orig_file = os.path.join(idol_folder, thumb_file).replace(os.sep, "/")
+                      if orig_file not in media_files:
+                          try:
+                              os.remove(os.path.join(idol_path, thumb_file))
+                          except: pass
 
-          # 3️⃣ Generate thumbnails
-          for relative_path in existing_images:
+          # Process each media file
+          for relative_path in media_files:
               total += 1
-              input_path = relative_path
-
-              # ✅ Only use folder name as idol_name
               folder = os.path.dirname(relative_path)
               idol_name = folder.replace("/", " ") if folder else os.path.splitext(relative_path)[0]
+              file_name = os.path.basename(relative_path)
+              ext = os.path.splitext(relative_path)[1].lower()
+              thumb_path = os.path.join("thumbnails", idol_name, file_name)
 
-              # Keep the folder structure inside thumbnails/
-              thumb_path = os.path.join("thumbnails", relative_path)
-              os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-              
-              raw_url = f"{base_raw}{relative_path}".replace(" ", "%20")
-              thumb_url = f"{base_raw}thumbnails/{relative_path}".replace(" ", "%20")
-
-              src_mtime = os.path.getmtime(input_path)
-              # Recreate thumbnail if it doesn't exist or is outdated
-              if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < src_mtime:
-                  try:
-                      with Image.open(input_path) as im:
-                          im.thumbnail((300, 300))
-                          im.save(thumb_path, "WEBP")
+              # Decide thumbnail generation method
+              if ext in (".mp4", ".avi", ".mov", ".mkv"):
+                  thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
+                  if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < os.path.getmtime(relative_path):
+                      result = make_video_thumbnail(relative_path, thumb_path)
+                      if result:
                           updated += 1
-                  except Exception as e:
-                      print(f"⚠️ Skipped {relative_path}: {e}")
-                      continue
+                      else:
+                          skipped += 1
+                          continue
+                  else:
+                      skipped += 1
               else:
-                  skipped += 1
-              
-              # ✅ Output format with trailing comma and space
+                  thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
+                  if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < os.path.getmtime(relative_path):
+                      result = make_image_thumbnail(relative_path, thumb_path)
+                      if result:
+                          updated += 1
+                      else:
+                          skipped += 1
+                          continue
+                  else:
+                      skipped += 1
+
+              raw_url = f"{base_raw}{relative_path}".replace(" ", "%20")
+              thumb_url = f"{base_raw}{thumb_path.replace(os.sep,'/')}".replace(" ", "%20")
+
               output_lines.append(f"{idol_name}, {raw_url}, {thumb_url}, ")
 
-          # Sort exactly like previous version
+          # Sort and write to single file
           output_lines.sort()
-
-          # ✅ Only this line is changed:
-          with open("idol_gallery_links_02.txt", "w", encoding="utf-8") as f:
+          with open("idol_gallery_links_03.txt", "w", encoding="utf-8") as f:
               f.write("\n".join(output_lines))
 
-          print(f"📄 Generated idol_gallery_links_02.txt")
-          print(f"Summary: Processed {total} images — {updated} updated, {skipped} reused")
+          print(f"📄 Generated idol_gallery_links_03.txt with {total} items — {updated} updated, {skipped} skipped")
           PYCODE
 
-      # 6️⃣ Commit generated file AND thumbnails
+      # 6️⃣ Commit and push
       - name: Commit and push results
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add idol_gallery_links_02.txt thumbnails || true
-          if ! git diff --cached --quiet; then
-            git commit -m "Update idol_gallery_links_02.txt & thumbnails [auto]"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add idol_gallery_links_03.txt thumbnails || true
+          git commit -m "Auto-generate gallery + video thumbnails" || echo "No changes"
+          git push
 
       # 7️⃣ Save thumbnails cache
       - name: Save thumbnails cache
         uses: actions/cache@v4
         with:
           path: thumbnails
-          key: thumbnails-${{ hashFiles('**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp', '**/*.gif') }}
+          key: thumbnails-${{ hashFiles('**/*.jpg','**/*.jpeg','**/*.png','**/*.webp','**/*.gif','**/*.mp4','**/*.avi','**/*.mov','**/*.mkv') }}
           restore-keys: |
             thumbnails-
