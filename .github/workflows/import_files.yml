@@ -1,0 +1,48 @@
+name: Sync Media from idols-video-01 to idols-media-02
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout the target repo (idols-media-02)
+      - name: Checkout idols-media-02
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: target_repo
+
+      # 2️⃣ Checkout the source repo (idols-video-01)
+      - name: Checkout idols-video-01
+        uses: actions/checkout@v4
+        with:
+          repository: beltedblinds/idols-video-01
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: source_repo
+
+      # 3️⃣ Ensure thumbnails folder exists in target
+      - name: Ensure thumbnails folder
+        run: |
+          mkdir -p target_repo/thumbnails
+
+      # 4️⃣ Copy all new/updated files except .github/workflows from source to target
+      - name: Copy new or updated files
+        run: |
+          rsync -av --ignore-existing --update --exclude='.github/workflows/' source_repo/ target_repo/
+
+      # 5️⃣ Commit & push changes (excluding workflow files)
+      - name: Commit & Push
+        run: |
+          cd target_repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git reset .github/workflows/* 2>/dev/null || true
+          git commit -m "Sync new/updated files from idols-video-01" || echo "No changes to commit"
+          git push origin main
