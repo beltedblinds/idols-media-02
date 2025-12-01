@@ -1,4 +1,4 @@
-name: Copy Folder Structure from idols-media-02
+name: Copy Folder Structure from idols-media-01
 
 on:
   workflow_dispatch:
@@ -11,18 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout idols-media-03 repo
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: idols-media-03
-          persist-credentials: true
-
       - name: Checkout idols-media-02 repo
         uses: actions/checkout@v4
         with:
-          repository: beltedblinds/idols-media-02
+          ref: main
           path: idols-media-02
+          persist-credentials: true
+
+      - name: Checkout idols-media-01 repo
+        uses: actions/checkout@v4
+        with:
+          repository: beltedblinds/idols-media-01
+          path: idols-media-01
 
       - name: Copy folder structure (exclude certain paths)
         run: |
@@ -30,8 +30,8 @@ jobs:
           import os
           from pathlib import Path
 
-          source_root = Path("idols-media-02")
-          target_root = Path("idols-media-03")
+          source_root = Path("idols-media-01")
+          target_root = Path("idols-media-02")
 
           # Paths to exclude (relative to source_root)
           excluded_prefixes = [".github/workflows", "idol_gallery_links.txt"]
@@ -56,9 +56,9 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          cd idols-media-03
+          cd idols-media-02
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Sync folder structure from idols-media-02" || echo "No changes to commit"
+          git commit -m "Sync folder structure from idols-media-01" || echo "No changes to commit"
           git push
