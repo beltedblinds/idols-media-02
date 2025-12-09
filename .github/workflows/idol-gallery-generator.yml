@@ -122,13 +122,14 @@ jobs:
                           for ext in possible_media_exts
                       )
                       
-                      # Delete only if media does not exist
-                      if not media_exists:
+                      # Never delete _manual thumbnails unless original media is gone
+                      if not media_exists and not is_manual:
                           try:
                               os.remove(thumb_path)
                               print(f"🗑 Deleted orphan thumbnail: {thumb_path}")
                           except Exception as e:
                               print(f"⚠️ Failed to delete {thumb_path}: {e}")
+
 
 
           # Process each media file
@@ -141,17 +142,19 @@ jobs:
               thumb_path = os.path.join("thumbnails", idol_name, file_name)
 
               # Decide thumbnail generation method with _manual protection
-              thumb_base = os.path.splitext(thumb_path)[0]
+              thumb_base = os.path.splitext(os.path.join("thumbnails", idol_name, file_name))[0]
               manual_thumb_path = thumb_base + "_manual.webp"
+              auto_thumb_path = thumb_base + ".webp"
               
-              # If manual thumbnail exists, use it and skip generation
+              # If manual exists, use it and never overwrite
               if os.path.exists(manual_thumb_path):
-                  thumb_path = manual_thumb_path  # Use manual for output
+                  thumb_path = manual_thumb_path
                   generate = False
                   skipped += 1
               else:
-                  thumb_path = thumb_base + ".webp"
+                  thumb_path = auto_thumb_path
                   generate = True
+
               
               # Only generate if needed
               if generate:
