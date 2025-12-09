@@ -101,18 +101,35 @@ jobs:
                   if file.lower().endswith((".jpg",".jpeg",".png",".webp",".gif",".mp4",".avi",".mov",".mkv")):
                       media_files.append(os.path.relpath(os.path.join(root, file), "."))
 
-          # Remove old thumbnails not in current media
+          # Remove old thumbnails not in current media, but protect _manual files
           if os.path.exists("thumbnails"):
               for idol_folder in os.listdir("thumbnails"):
                   idol_path = os.path.join("thumbnails", idol_folder)
                   if not os.path.isdir(idol_path):
                       continue
                   for thumb_file in os.listdir(idol_path):
-                      orig_file = os.path.join(idol_folder, thumb_file).replace(os.sep, "/")
-                      if orig_file not in media_files:
+                      thumb_path = os.path.join(idol_path, thumb_file)
+                      
+                      # Check if this is a manual thumbnail
+                      is_manual = "_manual" in thumb_file
+                      
+                      # Determine corresponding original media path(s)
+                      base_name = os.path.splitext(thumb_file)[0]
+                      possible_media_exts = [".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".mov", ".mkv"]
+                      
+                      media_exists = any(
+                          os.path.exists(os.path.join(idol_folder.replace(" ", "/"), base_name + ext))
+                          for ext in possible_media_exts
+                      )
+                      
+                      # Delete only if media does not exist
+                      if not media_exists:
                           try:
-                              os.remove(os.path.join(idol_path, thumb_file))
-                          except: pass
+                              os.remove(thumb_path)
+                              print(f"🗑 Deleted orphan thumbnail: {thumb_path}")
+                          except Exception as e:
+                              print(f"⚠️ Failed to delete {thumb_path}: {e}")
+
 
           # Process each media file
           for relative_path in media_files:
@@ -124,8 +141,16 @@ jobs:
               thumb_path = os.path.join("thumbnails", idol_name, file_name)
 
               # Decide thumbnail generation method
+              thumb_base = os.path.splitext(thumb_path)[0]
+              manual_thumb_path = thumb_base + "_manual.webp"
+              thumb_path = thumb_base + ".webp"
+              
+              # Skip auto-generation if manual thumbnail exists
+              if os.path.exists(manual_thumb_path):
+                  skipped += 1
+                  continue
+              
               if ext in (".mp4", ".avi", ".mov", ".mkv"):
-                  thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
                   if not os.path.exists(thumb_path):
                       result = make_video_thumbnail(relative_path, thumb_path)
                       if result:
@@ -136,7 +161,6 @@ jobs:
                   else:
                       skipped += 1
               else:
-                  thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
                   if not os.path.exists(thumb_path):
                       result = make_image_thumbnail(relative_path, thumb_path)
                       if result:
@@ -146,6 +170,7 @@ jobs:
                           continue
                   else:
                       skipped += 1
+
 
               raw_url = f"{base_raw}{relative_path}".replace(" ", "%20")
               thumb_url = f"{base_raw}{thumb_path.replace(os.sep,'/')}".replace(" ", "%20")
