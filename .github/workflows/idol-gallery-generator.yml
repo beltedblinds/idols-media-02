@@ -152,16 +152,28 @@ jobs:
 
               output_lines.append(f"{idol_name}, {raw_url}, {thumb_url}, ")
 
-          # Override with manual thumbnails if they exist
+          # Efficiently override with manual thumbnails
           manual_root = "manual thumbnails"
-          for i, line in enumerate(output_lines):
+          
+          # Build lookup: (idol_name, file_name) -> index in output_lines
+          lookup = {}
+          for idx, line in enumerate(output_lines):
               idol_name, raw_url, thumb_url, _ = line.split(", ", 3)
-              # Construct expected manual thumbnail path
-              manual_thumb_path = os.path.join(manual_root, idol_name.replace(" ", "/"), os.path.basename(thumb_url))
-              if os.path.exists(manual_thumb_path):
-                  # Use manual thumbnail URL instead
-                  manual_thumb_url = f"{base_raw}{manual_thumb_path.replace(os.sep,'/')}".replace(" ", "%20")
-                  output_lines[i] = f"{idol_name}, {raw_url}, {manual_thumb_url}, "
+              file_name = os.path.basename(thumb_url)
+              lookup[(idol_name, file_name)] = idx
+          
+          # Iterate over manual thumbnails folder only
+          for idol_folder in os.listdir(manual_root):
+              idol_path = os.path.join(manual_root, idol_folder)
+              if not os.path.isdir(idol_path):
+                  continue
+              for manual_file in os.listdir(idol_path):
+                  key = (idol_folder, manual_file)
+                  if key in lookup:
+                      idx = lookup[key]
+                      idol_name, raw_url, thumb_url, _ = output_lines[idx].split(", ", 3)
+                      manual_thumb_url = f"{base_raw}{os.path.join(manual_root, idol_folder, manual_file).replace(os.sep,'/')}".replace(" ", "%20")
+                      output_lines[idx] = f"{idol_name}, {raw_url}, {manual_thumb_url}, "
 
 
           # Sort and write to single file
