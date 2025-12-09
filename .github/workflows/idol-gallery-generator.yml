@@ -140,36 +140,42 @@ jobs:
               ext = os.path.splitext(relative_path)[1].lower()
               thumb_path = os.path.join("thumbnails", idol_name, file_name)
 
-              # Decide thumbnail generation method
+              # Decide thumbnail generation method with _manual protection
               thumb_base = os.path.splitext(thumb_path)[0]
               manual_thumb_path = thumb_base + "_manual.webp"
-              thumb_path = thumb_base + ".webp"
               
-              # Skip auto-generation if manual thumbnail exists
+              # If manual thumbnail exists, use it and skip generation
               if os.path.exists(manual_thumb_path):
+                  thumb_path = manual_thumb_path  # Use manual for output
+                  generate = False
                   skipped += 1
-                  continue
-              
-              if ext in (".mp4", ".avi", ".mov", ".mkv"):
-                  if not os.path.exists(thumb_path):
-                      result = make_video_thumbnail(relative_path, thumb_path)
-                      if result:
-                          updated += 1
-                      else:
-                          skipped += 1
-                          continue
-                  else:
-                      skipped += 1
               else:
-                  if not os.path.exists(thumb_path):
-                      result = make_image_thumbnail(relative_path, thumb_path)
-                      if result:
-                          updated += 1
+                  thumb_path = thumb_base + ".webp"
+                  generate = True
+              
+              # Only generate if needed
+              if generate:
+                  if ext in (".mp4", ".avi", ".mov", ".mkv"):
+                      if not os.path.exists(thumb_path):
+                          result = make_video_thumbnail(relative_path, thumb_path)
+                          if result:
+                              updated += 1
+                          else:
+                              skipped += 1
+                              continue
                       else:
                           skipped += 1
-                          continue
                   else:
-                      skipped += 1
+                      if not os.path.exists(thumb_path):
+                          result = make_image_thumbnail(relative_path, thumb_path)
+                          if result:
+                              updated += 1
+                          else:
+                              skipped += 1
+                              continue
+                      else:
+                          skipped += 1
+
 
 
               raw_url = f"{base_raw}{relative_path}".replace(" ", "%20")
