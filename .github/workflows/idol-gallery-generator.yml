@@ -126,7 +126,7 @@ jobs:
               # Decide thumbnail generation method
               if ext in (".mp4", ".avi", ".mov", ".mkv"):
                   thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
-                  if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < os.path.getmtime(relative_path):
+                  if not os.path.exists(thumb_path):
                       result = make_video_thumbnail(relative_path, thumb_path)
                       if result:
                           updated += 1
@@ -137,7 +137,7 @@ jobs:
                       skipped += 1
               else:
                   thumb_path = os.path.splitext(thumb_path)[0] + ".webp"
-                  if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < os.path.getmtime(relative_path):
+                  if not os.path.exists(thumb_path):
                       result = make_image_thumbnail(relative_path, thumb_path)
                       if result:
                           updated += 1
