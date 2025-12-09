@@ -152,6 +152,18 @@ jobs:
 
               output_lines.append(f"{idol_name}, {raw_url}, {thumb_url}, ")
 
+          # Override with manual thumbnails if they exist
+          manual_root = "manual thumbnails"
+          for i, line in enumerate(output_lines):
+              idol_name, raw_url, thumb_url, _ = line.split(", ", 3)
+              # Construct expected manual thumbnail path
+              manual_thumb_path = os.path.join(manual_root, idol_name.replace(" ", "/"), os.path.basename(thumb_url))
+              if os.path.exists(manual_thumb_path):
+                  # Use manual thumbnail URL instead
+                  manual_thumb_url = f"{base_raw}{manual_thumb_path.replace(os.sep,'/')}".replace(" ", "%20")
+                  output_lines[i] = f"{idol_name}, {raw_url}, {manual_thumb_url}, "
+
+
           # Sort and write to single file
           output_lines.sort()
           with open("idol_gallery_links_02.txt", "w", encoding="utf-8") as f:
