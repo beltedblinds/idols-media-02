@@ -34,7 +34,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add idol_gallery_dates.txt || true
+          git add idol_gallery_dates_02.txt || true
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
